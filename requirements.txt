@@ -1,0 +1,12 @@
+chroma-hnswlib==0.7.1
+chromadb==0.4.3
+cors==1.0.1
+Flask==2.3.2
+Flask-Cors==4.0.0
+numpy==1.22.4
+opencv-python==4.5.5.64
+pandas==2.0.3
+requests==2.31.0
+requests-file==1.5.1
+web3==6.6.1
+websockets==11.0.3
