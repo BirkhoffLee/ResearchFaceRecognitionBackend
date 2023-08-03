@@ -5,6 +5,8 @@ import numpy as np
 from VectorDatabase import ChromaDB
 import FaceRecognition
 import BlockChain
+import hashlib
+import time
 
 from flask_cors import CORS, cross_origin
 
@@ -46,56 +48,56 @@ def identifyFace():
     else:
         return "{\"success\":false}"
 
-@app.route('/identity/<nationalID>', methods=['DELETE'])
+@app.route('/identity/<national_hash>', methods=['DELETE'])
 @cross_origin(supports_credentials=True)
-def deleteIdentity(nationalID):
-    ids = [nationalID] #这个需要是list
-    if db.getEmbeddingById(nationalID) is None:
-        return "{\"success\":false, \"msg\",\"No such identity with giving nationalID\"}"
+def deleteIdentity(national_hash):
+    ids = [national_hash] #这个需要是list
+    if db.getEmbeddingById(ids) is None:
+        return "{\"success\":false, \"msg\":\"No such identity with giving national_hash\"}"
     else:
         db.deleteDataByIds(ids)
         # 区块链删除
         #为了让这部分代码不会在中心化的服务器修改，这里在区块链实现
         # 区块链删除
-        if db.getEmbeddingById(nationalID) is None:
-            return "{\"success\":true}"
+        if db.getEmbeddingById(national_hash) is None:
+             return "{\"success\":true}"
         else:
-            return "{\"success\":false, \"msg\",\"Deleting failure\"}"
+            return "{\"success\":false, \"msg\":\"Deleting failure\"}"
 
 @app.route("/identity/new", methods=["POST"])
 @cross_origin(supports_credentials=True)
 def insertIdentity():
     if request.content_type.startswith('application/json'):
-         nationalID = request.json.get('national_id')
-         if db.getEmbeddingById(nationalID) is not None:
-             return "{\"success\":false, \"msg\",\"NationalId already exists\"}"
-         else:
-             # 获取传送过来的完整原始图像
-             file = request.json.get('image')
-             image_data = base64.b64decode(file.split(',')[1])
-             np_array = np.frombuffer(image_data, dtype=np.uint8)
-             img = cv2.imdecode(np_array, cv2.IMREAD_COLOR)  # 从二进制图片数据中读
-             face_feature = get_face_feature_from_pics(img)
-             face_feature_list = [face_feature[0].tolist()]
-             db.insert(embeddings=face_feature_list, metadatas=[{"nationalID": nationalID}], ids=nationalID)
-             return "{\"success\":true}"
+         # 获取传送过来的完整原始图像
+         file = request.json.get('image')
+         image_data = base64.b64decode(file.split(',')[1])
+         np_array = np.frombuffer(image_data, dtype=np.uint8)
+         img = cv2.imdecode(np_array, cv2.IMREAD_COLOR)  # 从二进制图片数据中读
+         face_feature = get_face_feature_from_pics(img)
+         face_feature_list = [face_feature[0].tolist()]
+         #生成national_hash,sha25查出chromadb的存储字节长度，需要截取一下
+         national_hash = generateHash256FromString(str(time.time()))[:30]
+         db.insert(embeddings=face_feature_list, metadatas=[{"national_hash": national_hash}], ids=national_hash)
+         return "{\"success\":true, \"national_hash\":\"" + national_hash + "\"}"
 
-    elif request.content_type.startswith('multipart/form-data'):
-         nationalID = request.form.get('national_id')
-         if db.getEmbeddingById(nationalID) is not None:
-             return "{\"success\":false, \"msg\",\"NationalId already exists\"}"
-         else:
-             # 获取传送过来的完整原始图像
-             file = request.files.get('img')
-             img_byte = file.read()
-             img_byte = bytearray(img_byte)
-             img = cv2.imdecode(np.array(img_byte, dtype='uint8'), cv2.IMREAD_UNCHANGED)  # 从二进制图片数据中读
-             face_feature = get_face_feature_from_pics(img)
-             face_feature_list = [face_feature[0].tolist()]
-             db.insert(embeddings=face_feature_list, metadatas=[{"nationalID": nationalID}], ids=nationalID)
-             return "{\"success\":true}"
+    # elif request.content_type.startswith('multipart/form-data'):
+    #      nationalID = request.form.get('national_id')
+    #      if db.getEmbeddingById(nationalID) is not None:
+    #          return "{\"success\":false, \"msg\",\"NationalId already exists\"}"
+    #      else:
+    #          # 获取传送过来的完整原始图像
+    #          file = request.files.get('img')
+    #          img_byte = file.read()
+    #          img_byte = bytearray(img_byte)
+    #          img = cv2.imdecode(np.array(img_byte, dtype='uint8'), cv2.IMREAD_UNCHANGED)  # 从二进制图片数据中读
+    #          face_feature = get_face_feature_from_pics(img)
+    #          face_feature_list = [face_feature[0].tolist()]
+    #          # 生成national_hash
+    #          national_hash = generateHash256FromString(nationalID + str(time.time()))
+    #          db.insert(embeddings=face_feature_list, metadatas=[{"national_hash": national_hash}], ids=national_hash)
+    #          return "{\"success\":true, \"national_hash\":" + national_hash + "}"
     else:
-        return "{\"success\":false, \"msg\",\"Format is not supported!\"}"
+        return "{\"success\":false, \"msg\":\"Format is not supported!\"}"
 
 
 #从img中读取到人脸信息
@@ -110,19 +112,16 @@ def identifyFaceFromImage(img):
             face_embeddings_list = [face_feature[0].tolist()]
             # 查找最接近的5个人脸数据，欧拉距离最短
             result_dic = db.search(face_embeddings_list, 5)
-            print(result_dic)
             embeddings = result_dic["embeddings"]
             for index, id in enumerate(result_dic["ids"][0]):
                 stored_face_feature = embeddings[0][index]
                 #chromadb存储的是list类型，需要转换成numpy array
                 stored_face_feature = np.array([stored_face_feature]).astype(np.float32)
-                print(stored_face_feature.shape)
-                print(face_feature.shape)
                 if recognizer.isSameFace(face_feature, stored_face_feature):
                     # 去区块链里面查找这个人,返回一个set
                     #userinfo = ep.getCivilianInfoByNationalId(id)
                     #json_userinfo = transferUserinfoToJSONString(userinfo)
-                    json_userinfo = "{\"success\":true, \"national_id\":" + id +"}"
+                    json_userinfo = "{\"success\":true, \"national_hash\":\"" + id +"\"}"
                     return json_userinfo
     return None
 
@@ -140,6 +139,14 @@ def get_face_feature_from_pics(img):
             face_feature = recognizer.generateFeatureFromImg(img, face)
             return face_feature
     return None
+
+'''
+    输入一个字符串，根据sha256生成一个16进制数，字符串相同那么生成的数也相同
+'''
+def generateHash256FromString(string):
+    sha256_obj = hashlib.sha256()
+    sha256_obj.update(string.encode("utf-8"))
+    return sha256_obj.hexdigest()
 
 
 if __name__ == '__main__':

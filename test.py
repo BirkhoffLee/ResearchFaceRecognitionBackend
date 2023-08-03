@@ -4,6 +4,7 @@ from VectorDatabase import ChromaDB
 import os
 import numpy as np
 import cv2
+import hashlib
 
 db = ChromaDB("./resources/ChromaDB")
 detector = FaceRecognition.FaceDetector(model_path="./resources/models/face_detection_yunet_2022mar.onnx",
@@ -60,5 +61,26 @@ def test3():
             db.insert(embeddings=face_feature_list, metadatas=[{"nationalID": str(nationalID)}], ids=str(nationalID))
             nationalID += 1
 
+import time
+def test4():
+    now_time = time.time()
+    str1 = str(now_time) + "123,42"
+    print(str1)
+    print(generateHash256FromString(str1))
+    time.sleep(1)
+    now_time = time.time()
+    str2 = str(now_time) + "123,42"
+    print(str2)
+    print(generateHash256FromString(str2))
+
+def generateHash256FromString(string):
+    sha256_obj = hashlib.sha256()
+    sha256_obj.update(string.encode("utf-8"))
+    return sha256_obj.hexdigest()
+
 if __name__ == '__main__':
-    test3()
+    test4()
+    #import numpy as np
+    #a = db.collection.query(query_embeddings=np.zeros((1,128)).tolist(), n_results=2)
+    #print(a)
+    #db.clearDatabase()

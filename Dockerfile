@@ -3,7 +3,7 @@ FROM python:3.10
 # 作者
 MAINTAINER cyt
 #将你的项目文件放到docker容器中的/BlockChainBasedSecuritySystem文件夹，这里/BlockChainBasedSecuritySystem是在根目录的，与/root /opt等在一个目录
-ADD ../BlockChainBasedSecuritySystem /BlockChainBasedSecuritySystem
+ADD ./BlockChainBasedSecuritySystem /BlockChainBasedSecuritySystem
 # 设置工作目录，也就是下面执行 ENTRYPOINT 后面命令的路径
 WORKDIR /BlockChainBasedSecuritySystem
 RUN apt-get update && apt-get install ffmpeg libsm6 libxext6 libgl1 -y
