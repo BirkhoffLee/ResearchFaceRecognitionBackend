@@ -71,7 +71,6 @@ class FaceRecognizer(object):
         l2_score = self.recognizer.match(
             feature1, feature2, cv2.FaceRecognizerSF_FR_NORM_L2
         )
-        print("cosine_score={},l2_score={}".format(cosine_score, l2_score))
-        #return cosine_score >= 0.83
-        #return (cosine_score >= 0.83) or (l2_score <= 0.320)
+        #print("cosine_score={},l2_score={}".format(cosine_score, l2_score))
+        #return (cosine_score >= 0.45) or (l2_score <= 1.00)
         return (cosine_score >= 0.363) or (l2_score <= 1.128)

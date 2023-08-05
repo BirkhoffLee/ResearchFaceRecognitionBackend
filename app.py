@@ -108,10 +108,16 @@ def identifyFaceFromImage(img):
         for face_index ,face in enumerate(faces[1]):
             if face_index > 0:
                 break
+            start = time.time_ns()
             face_feature = recognizer.generateFeatureFromImg(img, face)
+            end = time.time_ns()
+            print("模型处理时间{}".format(end - start))
             face_embeddings_list = [face_feature[0].tolist()]
             # 查找最接近的5个人脸数据，欧拉距离最短
+            start = time.time_ns()
             result_dic = db.search(face_embeddings_list, 5)
+            end = time.time_ns()
+            print("搜寻时间{}".format(end - start))
             embeddings = result_dic["embeddings"]
             for index, id in enumerate(result_dic["ids"][0]):
                 stored_face_feature = embeddings[0][index]
